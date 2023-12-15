@@ -1,0 +1,53 @@
+grafana:
+  enabled: true
+  env: 
+    http_proxy: "http://proxy_url:proxy_port"
+    https_proxy: "http://proxy_url:proxy_port"
+    no_proxy: "localhost,127.0.0.1,nexus.secil.net,registry-1.docker.io,cluster.local,monitoring-stack-kube-prom-prometheus.monitoring:9090,monitoring-stack-kube-prom-alertmanager.monitoring:9093"
+    HTTPS_PROXY: "http://proxy_url:proxy_port"
+    HTTP_PROXY: "http://proxy_url:proxy_port"
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+
+additionalPrometheusRulesMap: 
+  rule-name: 
+    groups:
+      - name: secil
+        rules: 
+        - alert: KubernetesCronjobSuspended
+          expr: kube_cronjob_spec_suspend != 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: Kubernetes CronJob suspended (instance {{ $labels.instance }})
+            description: "CronJob {{ $labels.namespace }}/{{ $labels.cronjob }} is suspended\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+alertmanager:
+  enabled: true
+  alertmanager:
+  alertmanagerSpec:
+    containers:
+      - name: alertmanager
+  config:
+    global:
+      http_config:
+        proxy_url: "http://proxy_url:proxy_port"
+      resolve_timeout: 5m
+    route:
+      receiver: slack-notifications
+      group_wait: 5s
+      group_interval: 10s
+      repeat_interval: 1h
+    receivers:
+      - name: "null"
+      - name: slack-notifications
+        slack_configs:
+          - send_resolved: true
+            username: 'Alertmanager'
+            channel: '#secil-alerts'
+            api_url: 'https://hooks.slack.com/services/xxx'
+            icon_url: 'https://i.imgur.com/BeNCJG5.png'
+            title: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+            text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
