@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: alertmanager-test.secil
+    http:
+      paths:
+      - backend:
+          service:
+            name: monitoring-stack-kube-prom-alertmanager
+            port:
+              number: 9093
+        path: /
+        pathType: Prefix
